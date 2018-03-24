@@ -11,7 +11,22 @@ setwd("~/GoogleDrive/University Material/Period 3.4/Data Analysis/AounisAwefulAc
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-collisions <- as.data.frame(read_csv("last_year_collisions.csv"))
+collisions <- as.data.frame(read_csv("all_collisions.csv"))
 names(collisions)[1] <- "ROWS"
 names(collisions) <- gsub(" ", "_", names(collisions))
+```
+
+```{r}
+temp <- table(collisions$MONTH)
+temp <- temp[order(match(names(temp), month.name))]
+```
+
+```{r}
+days_unique <- unique(collisions$DATE)
+daily_sums <- data.frame(DATE = days_unique)
+for (i in 1:length(names(collisions))) {
+  if (grepl("^NUMBER", names(collisions)[i])) {
+    daily_sums[, names(collisions)[i]] <- unlist(lapply(days_unique, function(x) sum(collisions[collisions$DATE == x, names(collisions)[i]])))
+  }
+}
 ```
