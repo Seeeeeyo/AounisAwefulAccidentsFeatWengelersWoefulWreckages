@@ -7,13 +7,32 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(forecast)
+library(ggfortify)
+library(ggmap)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(lubridate)
+library(readr)
+library(reshape2)
+library(scales)
+library(xts)
+Sys.setlocale("LC_TIME", "en_GB.utf8")
 setwd("~/GoogleDrive/University Material/Period 3.4/Data Analysis/AounisAwefulAccidentsFeatWengelersWoefulWreckages/")
+weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+months <- c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
 ```
 
 ```{r, message=FALSE, warning=FALSE}
 collisions <- as.data.frame(read_csv("all_collisions.csv"))
 names(collisions)[1] <- "ROWS"
 names(collisions) <- gsub(" ", "_", names(collisions))
+collisions$WEEKDAY <- factor(collisions$WEEKDAY)
+collisions$WEEKDAY <- factor(collisions$WEEKDAY, levels(collisions$WEEKDAY)[match(weekdays, levels(collisions$WEEKDAY))])
+collisions$MONTH <- factor(collisions$MONTH)
+collisions$MONTH <- factor(collisions$MONTH, levels(collisions$MONTH)[match(months, levels(collisions$MONTH))])
 ```
 
 ```{r}
@@ -29,4 +48,232 @@ for (i in 1:length(names(collisions))) {
     daily_sums[, names(collisions)[i]] <- unlist(lapply(days_unique, function(x) sum(collisions[collisions$DATE == x, names(collisions)[i]])))
   }
 }
+daily_accident_counts <- table(collisions$DATE)
+daily_sums$NUMBER_ACCIDENTS <- unlist(lapply(days_unique, function(x) daily_accident_counts[x]))
+daily_sums$WEEKDAY <- unlist(lapply(daily_sums$DATE, function(x) weekdays(as.Date(x, format = "%m/%d/%Y"))))
+daily_sums$WEEKDAY <- factor(daily_sums$WEEKDAY)
+daily_sums$WEEKDAY <- factor(daily_sums$WEEKDAY, levels(daily_sums$WEEKDAY)[match(weekdays, levels(collisions$WEEKDAY))])
+```
+
+```{r}
+cyclist_injured_ts <- ts(daily_sums$NUMBER_OF_CYCLIST_INJURED, frequency = 360)
+# cyclist_injured_ts <- msts(daily_sums$NUMBER_OF_CYCLIST_INJURED, frequency = 365)
+# cyclist_injured_xts <- xts(daily_sums$NUMBER_OF_CYCLIST_INJURED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"), frequency = 1)
+```
+
+```{r}
+autoplot.zoo(cyclist_injured_xts) + labs(x = "Time", y = "Injured cyclists")
+```
+
+```{r}
+cycling_stl <- stl(cyclist_injured_ts, s.window = "periodic")
+plot(cycling_stl)
+```
+
+```{r}
+cycling_density <- spec.pgram(cyclist_injured_ts, log = "no", taper = 0, plot = F)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+x_spec <- cycling_density$freq[1:50] # * 365
+plot(cycling_density$spec[1:50] ~ x_spec, xlab = "Period (in years)", ylab = "Spectral density", type = "h")
+title("Not gin time series periodogram")
+```
+
+# What
+
+```{r}
+daily_sums_long <- melt(daily_sums[, !(names(daily_sums) == "NUMBER_ACCIDENTS")], id.vars = c("DATE", "NUMBER_OF_PERSONS_INJURED", "NUMBER_OF_PERSONS_KILLED"))
+ggplot(daily_sums_long, aes(x = DATE, y = value)) + geom_area(aes(colour = variable, fill = variable), position = 'stack')
+```
+
+```{r}
+daily_sums$MONTH_YEAR <- as.yearmon(daily_sums$DATE, format = "%m/%d/%Y")
+monthly_sums <- aggregate(cbind(NUMBER_OF_PERSONS_INJURED, NUMBER_OF_PERSONS_KILLED, NUMBER_OF_PEDESTRIANS_INJURED, NUMBER_OF_PEDESTRIANS_KILLED, NUMBER_OF_CYCLIST_INJURED, NUMBER_OF_CYCLIST_KILLED, NUMBER_OF_MOTORIST_INJURED, NUMBER_OF_MOTORIST_KILLED) ~ MONTH_YEAR, data = daily_sums, FUN = sum)
+```
+
+```{r}
+monthly_sums_long <- melt(monthly_sums, id.vars = c("MONTH_YEAR"))
+ggplot(monthly_sums_long, aes(x = MONTH_YEAR, y = value)) + geom_area(aes(colour = variable, fill = variable), position = 'stack')
+```
+
+```{r}
+# could to autocorrelation etc. on this to see whether its just random
+daily_sums$PERCENTAGE_PEDESTRIANS_KILLED <- daily_sums$NUMBER_OF_PEDESTRIANS_KILLED / (daily_sums$NUMBER_OF_PEDESTRIANS_INJURED + daily_sums$NUMBER_OF_PEDESTRIANS_KILLED)
+daily_sums$PERCENTAGE_CYCLISTS_KILLED <- daily_sums$NUMBER_OF_CYCLIST_KILLED / (daily_sums$NUMBER_OF_CYCLIST_INJURED + daily_sums$NUMBER_OF_CYCLIST_KILLED)
+daily_sums$PERCENTAGE_MOTORIST_SKILLED <- daily_sums$NUMBER_OF_MOTORIST_KILLED / (daily_sums$NUMBER_OF_MOTORIST_INJURED + daily_sums$NUMBER_OF_MOTORIST_KILLED)
+# percentage_fatalities <- xts(daily_sums$PERCENTAGE_PEDESTRIANS_KILLED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"))
+ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"))) + 
+  geom_smooth(aes(y = PERCENTAGE_PEDESTRIANS_KILLED, colour = "PERCENTAGE_PEDESTRIANS_KILLED")) +
+  geom_smooth(aes(y = PERCENTAGE_CYCLISTS_KILLED, colour = "PERCENTAGE_CYCLISTS_KILLED")) +
+  geom_smooth(aes(y = PERCENTAGE_MOTORIST_SKILLED, colour = "PERCENTAGE_MOTORIST_SKILLED"))
+# autoplot.zoo(percentage_fatalities) + labs(x = "Time", y = "Percentage fatalities")
+```
+
+```{r}
+# could to autocorrelation etc. on this to see whether its just random
+monthly_sums$PERCENTAGE_PEDESTRIANS_KILLED <- monthly_sums$NUMBER_OF_PEDESTRIANS_KILLED / (monthly_sums$NUMBER_OF_PEDESTRIANS_INJURED + monthly_sums$NUMBER_OF_PEDESTRIANS_KILLED)
+monthly_sums$PERCENTAGE_CYCLISTS_KILLED <- monthly_sums$NUMBER_OF_CYCLIST_KILLED / (monthly_sums$NUMBER_OF_CYCLIST_INJURED + monthly_sums$NUMBER_OF_CYCLIST_KILLED)
+monthly_sums$PERCENTAGE_MOTORIST_SKILLED <- monthly_sums$NUMBER_OF_MOTORIST_KILLED / (monthly_sums$NUMBER_OF_MOTORIST_INJURED + monthly_sums$NUMBER_OF_MOTORIST_KILLED)
+# percentage_fatalities <- xts(daily_sums$PERCENTAGE_PEDESTRIANS_KILLED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"))
+ggplot(monthly_sums, aes(x = as.Date(MONTH_YEAR, format = "%m/%d/%Y"))) + 
+  geom_smooth(aes(y = PERCENTAGE_PEDESTRIANS_KILLED, colour = "PERCENTAGE_PEDESTRIANS_KILLED")) +
+  geom_smooth(aes(y = PERCENTAGE_CYCLISTS_KILLED, colour = "PERCENTAGE_CYCLISTS_KILLED")) +
+  geom_smooth(aes(y = PERCENTAGE_MOTORIST_SKILLED, colour = "PERCENTAGE_MOTORIST_SKILLED"))
+# autoplot.zoo(percentage_fatalities) + labs(x = "Time", y = "Percentage fatalities")
+```
+
+```{r}
+# could to autocorrelation etc. on this to see whether its just random
+daily_sums$PERCENTAGE_KILLED <- daily_sums$NUMBER_OF_PERSONS_KILLED / (daily_sums$NUMBER_OF_PERSONS_INJURED + daily_sums$NUMBER_OF_PERSONS_KILLED)
+percentage_fatalities <- xts(daily_sums$PERCENTAGE_KILLED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"))
+autoplot.zoo(percentage_fatalities) + labs(x = "Time", y = "Percentage fatalities")
+```
+
+```{r}
+daily_sums$QUARTER_YEAR <- as.yearqtr(daily_sums$DATE, format = "%m/%d/%Y")
+quarterly_sums <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_INJURED, NUMBER_OF_CYCLIST_INJURED, NUMBER_OF_MOTORIST_INJURED, NUMBER_OF_PEDESTRIANS_KILLED, NUMBER_OF_CYCLIST_KILLED, NUMBER_OF_MOTORIST_KILLED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
+quarterly_sums_injured <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_INJURED, NUMBER_OF_CYCLIST_INJURED, NUMBER_OF_MOTORIST_INJURED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
+quarterly_sums_killed <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_KILLED, NUMBER_OF_CYCLIST_KILLED, NUMBER_OF_MOTORIST_KILLED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
+```
+
+```{r}
+quarterly_sums_injured_long <- melt(quarterly_sums_injured, id.vars = c("QUARTER_YEAR"))
+quarterly_sums_killed_long <- melt(quarterly_sums_killed, id.vars = c("QUARTER_YEAR"))
+ggplot(quarterly_sums_injured_long, aes(x = QUARTER_YEAR, y = value)) + geom_area(aes(colour = variable, fill = variable), position = 'stack')
+ggplot(quarterly_sums_killed_long, aes(x = QUARTER_YEAR, y = value)) + geom_area(aes(colour = variable, fill = variable), position = 'stack')
+```
+
+```{r}
+# could to autocorrelation etc. on this to see whether its just random
+quarterly_sums$PERCENTAGE_PEDESTRIANS_KILLED <- quarterly_sums$NUMBER_OF_PEDESTRIANS_KILLED / (quarterly_sums$NUMBER_OF_PEDESTRIANS_INJURED + quarterly_sums$NUMBER_OF_PEDESTRIANS_KILLED)
+quarterly_sums$PERCENTAGE_CYCLISTS_KILLED <- quarterly_sums$NUMBER_OF_CYCLIST_KILLED / (quarterly_sums$NUMBER_OF_CYCLIST_INJURED + quarterly_sums$NUMBER_OF_CYCLIST_KILLED)
+quarterly_sums$PERCENTAGE_MOTORIST_SKILLED <- quarterly_sums$NUMBER_OF_MOTORIST_KILLED / (quarterly_sums$NUMBER_OF_MOTORIST_INJURED + quarterly_sums$NUMBER_OF_MOTORIST_KILLED)
+# percentage_fatalities <- xts(daily_sums$PERCENTAGE_PEDESTRIANS_KILLED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"))
+ggplot(quarterly_sums, aes(x = as.Date(QUARTER_YEAR, format = "%m/%d/%Y"))) + 
+  geom_smooth(aes(y = PERCENTAGE_PEDESTRIANS_KILLED, colour = "PERCENTAGE_PEDESTRIANS_KILLED")) +
+  geom_smooth(aes(y = PERCENTAGE_CYCLISTS_KILLED, colour = "PERCENTAGE_CYCLISTS_KILLED")) +
+  geom_smooth(aes(y = PERCENTAGE_MOTORIST_SKILLED, colour = "PERCENTAGE_MOTORIST_SKILLED"))
+# autoplot.zoo(percentage_fatalities) + labs(x = "Time", y = "Percentage fatalities")
+```
+
+# Analysis by weekday
+
+```{r, echo = FALSE, message = FALSE, fig.width = 8}
+ggplot(daily_sums, aes(x = WEEKDAY, y = NUMBER_OF_PEDESTRIANS_INJURED, group = WEEKDAY, fill = WEEKDAY)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + guides(fill = FALSE) + labs(x = "Day of the week", y = "Number of injured cyclists")
+```
+
+```{r}
+vehicles_count <- table(collisions$VEHICLE_TYPE_CODE_1)
+vehicles_count <- vehicles_count[order(-vehicles_count)]
+```
+
+# Analysis by time
+
+```{r}
+ggplot(collisions, aes(x = TIME)) + geom_histogram()
+```
+
+```{r}
+ggplot(collisions[collisions$WEEKDAY == "Monday",], aes(x = TIME)) + geom_histogram()
+ggplot(collisions, aes(x = TIME, fill = WEEKDAY)) + geom_density(alpha = 0.3)
+ggplot(collisions, aes(x = TIME, fill = WEEKDAY)) + geom_histogram(alpha = 0.2, position = 'identity')
+```
+
+```{r}
+collisions$TIME <- as.POSIXct(strptime(collisions$TIME, format="%H:%M:%S"))
+```
+
+```{r, fig.height=20, fig.width=8}
+ggplot(collisions, aes(x = TIME, fill = WEEKDAY)) + geom_density() + facet_grid(WEEKDAY ~ .) # + scale_x_datetime(breaks = date_breaks("3 hour"), labels = date_format("%H:%M:%S"))
+```
+
+```{r}
+collisions$NR_VEHICLES <- apply(!is.na(collisions[, c("VEHICLE_TYPE_CODE_1", "VEHICLE_TYPE_CODE_2", "VEHICLE_TYPE_CODE_3", "VEHICLE_TYPE_CODE_4", "VEHICLE_TYPE_CODE_5")]), 1, function(x) sum(x))
+```
+
+```{r}
+ggplot(collisions, aes(x = NR_VEHICLES)) + geom_bar()
+```
+
+# Looking at vehicle types
+
+Overall
+
+```{r}
+tmp <- melt(collisions[, c("VEHICLE_TYPE_CODE_1", "VEHICLE_TYPE_CODE_2", "VEHICLE_TYPE_CODE_3", "VEHICLE_TYPE_CODE_4", "VEHICLE_TYPE_CODE_5")], id.vars = NULL)
+tmp <- tmp$value[!is.na(tmp$value)]
+tmp_table <- table(tmp)
+tmp_table <- tmp_table[order(-tmp_table)]
+tmp_df <- as.data.frame(tmp_table)
+names(tmp_df) <- c("TYPE", "FREQ")
+```
+
+```{r, fig.height=8, fig.width=8}
+ggplot(tmp_df[1:15,], aes(x = TYPE, y = FREQ, fill = TYPE)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Per weekday
+
+```{r}
+test <- with(collisions, table(WEEKDAY, VEHICLE_TYPE_CODE_1))
+```
+
+```{r}
+tmp <- melt(collisions[, c("VEHICLE_TYPE_CODE_1", "VEHICLE_TYPE_CODE_2", "VEHICLE_TYPE_CODE_3", "VEHICLE_TYPE_CODE_4", "VEHICLE_TYPE_CODE_5", "WEEKDAY")], id.vars = c("WEEKDAY"))
+tmp <- tmp$value[!is.na(tmp$value) & tmp$WEEKDAY == "Monday"]
+tmp_table <- table(tmp)
+tmp_table <- tmp_table[order(-tmp_table)]
+tmp_df <- as.data.frame(tmp_table)
+names(tmp_df) <- c("TYPE", "FREQ")
+```
+
+```{r, fig.height=8, fig.width=8}
+ggplot(tmp_df[1:15,], aes(x = TYPE, y = FREQ, fill = TYPE)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+testy <- collisions %>% mutate(YEAR = format(as.Date(DATE, format = "%m/%d/%Y"), "%Y")) %>% group_by(YEAR, VEHICLE_TYPE_CODE_1) %>% summarise(COUNT = n())
+testy <- as.data.frame(testy)
+```
+
+```{r, fig.height=8, fig.width=12}
+ggplot(testy[testy$VEHICLE_TYPE_CODE_1 %in% tmp_df[1:10, "TYPE"],], aes(x = YEAR, y = COUNT)) + geom_bar(aes(fill = reorder(VEHICLE_TYPE_CODE_1, -COUNT)), stat = "identity", position = "dodge") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+maybe use dplyr to summarise more easily
+
+# Location related (large scale)
+
+```{r}
+test <- collisions %>% mutate(YEAR = format(as.Date(DATE, format = "%m/%d/%Y"), "%Y")) %>% group_by(YEAR, BOROUGH) %>% summarise(INJURED = sum(NUMBER_OF_PERSONS_INJURED), KILLED = sum(NUMBER_OF_PERSONS_KILLED), COUNT = n())
+test <- as.data.frame(test)
+```
+
+```{r}
+ggplot(test, aes(x = YEAR, y = INJURED, colour = BOROUGH, fill = BOROUGH)) + geom_bar(stat = "identity", position = "stack")
+```
+
+```{r}
+ggplot(test, aes(x = YEAR, y = KILLED / (KILLED + INJURED), colour = BOROUGH, fill = BOROUGH)) + geom_bar(stat = "identity", position = "stack")
+```
+
+```{r}
+ggplot(test, aes(x = YEAR, y = COUNT, colour = BOROUGH, fill = BOROUGH)) + geom_bar(stat = "identity", position = "stack")
+```
+
+# Super large scale trend
+
+
+```{r}
+daily_sums$YEAR <- year(as.Date(daily_sums$DATE, format = "%m/%d/%Y"))
+yearly_sums <- aggregate(cbind(NUMBER_OF_PERSONS_INJURED, NUMBER_OF_PERSONS_KILLED) ~ YEAR, data = daily_sums, FUN = sum)
+yearly_sums$PERCENTAGE_OF_PERSONS_KILLED <- with(yearly_sums, NUMBER_OF_PERSONS_KILLED / (NUMBER_OF_PERSONS_KILLED + NUMBER_OF_PERSONS_INJURED))
+ggplot(yearly_sums, aes(x = YEAR, y = NUMBER_OF_PERSONS_KILLED)) + geom_line()
+```
+
+```{r, fig.height=8}
+p1 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = NUMBER_OF_PERSONS_KILLED, colour = "NUMBER_OF_PERSONS_KILLED"), size = 1) + scale_color_manual(values = "#E69F00")
+p2 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = NUMBER_OF_PERSONS_INJURED, colour = "NUMBER_OF_PERSONS_INJURED"), size = 1)
+p3 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = PERCENTAGE_OF_PERSONS_KILLED, colour = "PERCENTAGE_OF_PERSONS_KILLED"), size = 1)
+grid.arrange(p1, p2, p3, ncol = 1)
 ```
