@@ -39,6 +39,7 @@ collisions <- read.csv(file = "NYPD_Motor_Vehicle_Collisions.csv", header =TRUE,
 collisions$DATE = as.Date(collisions$DATE, format="%m/%d/%Y")
 ```
 
+# Amount of fatal collisions
 ```{r}
 nrow(collisions[collisions$NUMBER.OF.PERSONS.KILLED>0,])
 ```
@@ -90,13 +91,9 @@ ggmap(map, extent = "device") +
 
 # Retain mortal collisions in Manahattan only
 
-#everyCollisions <- transform(collisions, YEARMONTH = as.yearmon(DATE))
-
-firstCollisions = rbind(c(0,10000), collisions) #Add a frame with no data point
-
 animatedMap <- ggmap(map) +
-  geom_point(data = firstCollisions[as.Date("2012-06-01") <firstCollisions$DATE & 
-                                       firstCollisions$DATE<as.Date("2012-08-01"), ],
+  geom_point(data = collisions[as.Date("2012-06-01") <collisions$DATE & 
+                                       collisions$DATE<as.Date("2012-08-01"), ],
              aes(x = LONGITUDE, y =LATITUDE, frame=DATE, cumulative=TRUE),
              color = "#c43400", size = 1, alpha=0.3) +
     theme(plot.title = element_text(hjust = 0.5))
@@ -148,38 +145,10 @@ animation::ani.options(interval=1)
 gganimate(animatedMap,ani.width = 750, ani.height = 750)
 ```
 
-# Most accident-prone streets
-
-This piece of code did not want to stop running...
-
-```{r}
-collisionsStreetKnown = collisions[!is.na(collisions$ON.STREET.NAME) & collisions$ON.STREET.NAME!="" & collisions$ON.STREET.NAME!=" ",]
-
-streets = levels(collisionsStreetKnown$ON.STREET.NAME) # Get boroughs' name
-streets = streets[1:5]
-
-frequency = integer(length(streets)) # Initialize frequency counts
-i=1
-for (street in streets){ # Get accident frequency per borough
-  frequency[i] = nrow(collisionsStreetKnown[collisionsStreetKnown$ON.STREET.NAME==street,])
-  i =i+1
-}
-
-newOrdering = sort(frequency, decreasing=TRUE, index.return=TRUE)$ix # index of streets in decreasing order
-
-streets = factor(collisionsStreetKnown$ON.STREET.NAME, streets[newOrdering]) # Order borough in decreasing order
-#levels(streets)[1] = "Unknown" # Replace "" by Unknown
-
-# Plot bar plot
-streetsDataframe <- data.frame(streets)
-ggplot(data=streetsDataframe, aes(streets)) + geom_bar()+ggtitle("Count of accidents per street")+ theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
-```
-
 
 # Collisions per borough
 
 ```{r}
-
 boroughs = levels(collisions$BOROUGH) # Get boroughs' name
 
 frequency = c(0,0,0,0,0,0) # Initialize frequency counts
@@ -256,7 +225,7 @@ contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes
                                              levels = contributingFactorsDataframe$causes)
 
 ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
-  geom_bar(stat = "identity")+ggtitle("Most common causes of collisions in NYC")+
+  geom_bar(stat = "identity")+ggtitle("Most common known causes of collisions in NYC")+
   theme(axis.text.x = element_text(angle=45, hjust = 1, size=8), legend.position="None")+
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10))
 ```
@@ -290,7 +259,7 @@ for(borough in levels(collisions$BOROUGH)){
   
   contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, levels =
                                                  contributingFactorsDataframe$causes)
-  plotTitle = paste("Most common causes of collisions in", borough)
+  plotTitle = paste("Most common known causes of collisions in", borough)
   print(ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
           geom_bar(stat = "identity")+
           ggtitle(plotTitle)+
@@ -301,7 +270,7 @@ for(borough in levels(collisions$BOROUGH)){
 
 # Most common causes of mortal collisions
 
-Note: this does not contain the accidents whose cause remained unknown.
+Note: this does not contain the accidents whose cause remained unknown. Look how Traffic control disregard jumped to the second place now while it was the 10th cause overall. Alcohol and unsafe speed are now 5th and 6th while they were not in the top 10 before. Passenger distraction also appears now.
 ```{r}
 mortalCollisions = collisions[collisions$NUMBER.OF.PERSONS.KILLED > 0, ]
 
@@ -327,7 +296,7 @@ contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCause
 contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, levels = contributingFactorsDataframe$causes)
 ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes))+
   geom_bar(stat = "identity")+
-  ggtitle("Most common causes of mortal collisions in NYC")+
+  ggtitle("Most common known causes of mortal collisions in NYC")+
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text( hjust = 1, size=8),
         legend.position='none')+
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
