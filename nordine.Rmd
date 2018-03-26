@@ -1,30 +1,383 @@
 ---
-title: "Nordine's Part"
-author: "Nordine Aouni"
-date: "23 March 2018"
-output: html_document
+title: "NYPD Motor Vehicle Collisions Analysis"
+output:
+  html_document:
+    toc: true
+    theme: united
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Data summary
+
+```{r}
+#Imports
+library(ggmap)
+library(cowplot)
+library(gganimate)
+library(animation)
+library(ggplot2)
+library(zoo) 
+library(dplyr)
+library(plyr)
+library(stringr)
+
+# Specify columnn type to soeed up loading
+columnTypes = c("DATE"="character", "TIME"="factor", "ZIP.CODE"="integer", "LATITUDE"="double", "LONGITUDE"="double",
+  "LOCATION"="factor", "ON.STREET.NAME"="factor", "CROSS.STREET.NAME"="factor", "OFF.STREET.NAME"="factor",
+  "NUMBER.OF.PERSONS.INJURED"="integer", "NUMBER.OF.PERSONS.KILLED"="integer",
+  "NUMBER.OF.PEDESTRIANS.INJURED"="integer","NUMBER.OF.PEDESTRIANS.KILLED"="integer", 
+  "NUMBER.OF.CYCLIST.INJURED"="integer", "NUMBER.OF.CYCLIST.KILLED"="integer", "NUMBER.OF.MOTORIST.INJURED"="integer", 
+  "NUMBER.OF.MOTORIST.KILLED"="integer", "CONTRIBUTING.FACTOR.VEHICLE.1"="factor", 
+  "CONTRIBUTING.FACTOR.VEHICLE.2"="factor", "CONTRIBUTING.FACTOR.VEHICLE.3"="factor", 
+  "CONTRIBUTING.FACTOR.VEHICLE.4"="factor", "CONTRIBUTING.FACTOR.VEHICLE.5"="factor", "UNIQUE.KEY"="factor", 
+  "VEHICLE.TYPE.CODE.1"="integer", "VEHICLE.TYPE.CODE.1"="factor", "VEHICLE.TYPE.CODE.2"="factor", 
+  "VEHICLE.TYPE.CODE.3"="factor", "VEHICLE.TYPE.CODE.4"="factor", "VEHICLE.TYPE.CODE.5"="factor")
+
+#Load data set
+collisions <- read.csv(file = "NYPD_Motor_Vehicle_Collisions.csv", header =TRUE, 
+                      colClasses = columnTypes)
+
+collisions$DATE = as.Date(collisions$DATE, format="%m/%d/%Y")
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+nrow(collisions[collisions$NUMBER.OF.PERSONS.KILLED>0,])
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Plot the known accident locations
+
+```{r}
+# only retain the data point having lat/long info
+collisionsComplete = collisions[complete.cases(collisions$LONGITUDE) & complete.cases(collisions$LATITUDE),]
+
+# Get a map
+#map = get_map(location = "New York city", source="osm", maptype="roadmap", zoom = "auto", color = "color")
+map = get_googlemap(center="New York city", maptype="terrain", zoom=10, color="color", size = c(640, 420))
+
+#ggmap(map, extent = "device") +
+ #   geom_point(data=collisionsComplete, aes(x = LONGITUDE, y = LATITUDE),
+  #             color = "#c43400", size = 1, alpha=0.5)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Collisions heatmap
+
+```{r}
+# Draw heat map
+ggmap(map, extent = "device") +
+  geom_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE), size = 0.3) +stat_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") +scale_fill_gradient(low = "green", high = "red") + scale_alpha(range = c(0, 0.3), guide = FALSE)
+```
+
+
+# Mortal collisions heatmap
+
+```{r}
+# Draw the heat map
+mortalCollisions = collisions[collisions$NUMBER.OF.PERSONS.KILLED > 0 & complete.cases(collisions$LONGITUDE) & complete.cases(collisions$LATITUDE), ]
+
+ggmap(map, extent = "device") +
+  geom_density2d(data = mortalCollisions, aes(x = LONGITUDE, y = LATITUDE), size = 0.3) +
+  stat_density2d(data = mortalCollisions, aes(x = LONGITUDE, y = LATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") +
+  scale_fill_gradient(low = "green", high = "red") +
+  scale_alpha(range = c(0, 0.3), guide = FALSE)
+```
+
+
+# Animated map of every collision over time
+
+```{r}
+
+# Retain mortal collisions in Manahattan only
+
+#everyCollisions <- transform(collisions, YEARMONTH = as.yearmon(DATE))
+
+firstCollisions = rbind(c(0,10000), collisions) #Add a frame with no data point
+
+animatedMap <- ggmap(map) +
+  geom_point(data = firstCollisions[as.Date("2012-06-01") <firstCollisions$DATE & 
+                                       firstCollisions$DATE<as.Date("2012-08-01"), ],
+             aes(x = LONGITUDE, y =LATITUDE, frame=DATE, cumulative=TRUE),
+             color = "#c43400", size = 1, alpha=0.3) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+animation::ani.options(interval=0.5)
+gganimate(animatedMap,ani.width = 750, ani.height = 750)
+```
+
+
+# Animated map of deadly collisions over time
+
+```{r}
+
+# Retain mortal collisions in Manahattan only
+
+mortalCollisions <- transform(mortalCollisions, YEARMONTH = as.yearmon(DATE)) 
+
+animatedMap <- ggmap(map) +
+    geom_point(data = mortalCollisions,
+             aes(x = LONGITUDE, y =LATITUDE, frame=YEARMONTH, cumulative=TRUE),
+             color = "#c43400", size = 2, alpha=0.3) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+animation::ani.options(interval=0.5)
+gganimate(animatedMap,ani.width = 750, ani.height = 750)
+```
+
+
+# Animation of deadly collisions in Manhattan over time
+
+Let's look a bit closer at the deadly collisions in Manhattan.
+
+```{r}
+manhattan = get_googlemap(center="Manhattan", maptype="terrain", zoom=11, color="color", size = c(640, 420))
+
+# Retain mortal collisions in Manahattan only
+mortalCollisionsManhattan = collisionsComplete[collisionsComplete$BOROUGH =="MANHATTAN" & collisionsComplete$NUMBER.OF.PERSONS.KILLED>0,]
+
+
+mortalCollisionsManhattan <- transform(mortalCollisionsManhattan, YEARMONTH = as.yearmon(DATE)) 
+
+animatedMap <- ggmap(manhattan) +
+    geom_point(data = mortalCollisionsManhattan,
+             aes(x = LONGITUDE, y =LATITUDE, frame=YEARMONTH, cumulative=TRUE),
+             color = "#c43400", size = 2, alpha=0.3) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+animation::ani.options(interval=1)
+gganimate(animatedMap,ani.width = 750, ani.height = 750)
+```
+
+# Most accident-prone streets
+
+This piece of code did not want to stop running...
+
+```{r}
+collisionsStreetKnown = collisions[!is.na(collisions$ON.STREET.NAME) & collisions$ON.STREET.NAME!="" & collisions$ON.STREET.NAME!=" ",]
+
+streets = levels(collisionsStreetKnown$ON.STREET.NAME) # Get boroughs' name
+streets = streets[1:5]
+
+frequency = integer(length(streets)) # Initialize frequency counts
+i=1
+for (street in streets){ # Get accident frequency per borough
+  frequency[i] = nrow(collisionsStreetKnown[collisionsStreetKnown$ON.STREET.NAME==street,])
+  i =i+1
+}
+
+newOrdering = sort(frequency, decreasing=TRUE, index.return=TRUE)$ix # index of streets in decreasing order
+
+streets = factor(collisionsStreetKnown$ON.STREET.NAME, streets[newOrdering]) # Order borough in decreasing order
+#levels(streets)[1] = "Unknown" # Replace "" by Unknown
+
+# Plot bar plot
+streetsDataframe <- data.frame(streets)
+ggplot(data=streetsDataframe, aes(streets)) + geom_bar()+ggtitle("Count of accidents per street")+ theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+```
+
+
+# Collisions per borough
+
+```{r}
+
+boroughs = levels(collisions$BOROUGH) # Get boroughs' name
+
+frequency = c(0,0,0,0,0,0) # Initialize frequency counts
+i=1
+for (borough in boroughs){ # Get accident frequency per borough
+  frequency[i] = nrow(collisions[collisions$BOROUGH==borough,])
+  i =i+1
+}
+
+newOrdering = sort(frequency, decreasing=TRUE, index.return=TRUE)$ix # index of boroughs in decreasing order
+
+boroughs = factor(collisions$BOROUGH,boroughs[newOrdering]) # Order borough in decreasing order
+levels(boroughs)[1] = "Unknown" # Replace "" by Unknown
+
+# Plot bar plot
+boroughsDataframe <- data.frame(boroughs)
+ggplot(data=boroughsDataframe, aes(boroughs, fill=boroughs)) +
+  geom_bar()+ggtitle("Count of collisions per borough")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+# Mortal collisions per borough
+
+```{r}
+mortalAccidents = collisions[collisions$NUMBER.OF.PERSONS.KILLED > 0, ]
+
+boroughs = levels(mortalAccidents$BOROUGH) # Get boroughs' name
+
+frequency = c(0,0,0,0,0,0) # Initialize frequency counts
+i=1
+for (borough in boroughs){ # Get accident frequency per borough
+  frequency[i] = nrow(mortalAccidents[mortalAccidents$BOROUGH==borough,])
+  i =i+1
+}
+
+newOrdering = sort(frequency, decreasing=TRUE, index.return=TRUE)$ix # index of boroughs in decreasing order
+
+boroughs = factor(mortalAccidents$BOROUGH,boroughs[newOrdering]) # Order borough in decreasing order
+levels(boroughs)[1] = "Unknown" # Replace "" by Unknown
+
+# Plot bar plot
+boroughsDataframe <- data.frame(boroughs)
+ggplot(data=boroughsDataframe, aes(boroughs, fill=boroughs)) +
+  geom_bar()+ggtitle("Count of mortal collisions per borough") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+# Most common causes of collisions
+
+```{r}
+
+# Concatenate every causes together
+contributingFactors = unlist(list(collisions$CONTRIBUTING.FACTOR.VEHICLE.1,
+                                  collisions$CONTRIBUTING.FACTOR.VEHICLE.2, 
+                                  collisions$CONTRIBUTING.FACTOR.VEHICLE.3, 
+                                  collisions$CONTRIBUTING.FACTOR.VEHICLE.4, 
+                                  collisions$CONTRIBUTING.FACTOR.VEHICLE.5))
+
+# Remove unknown causes
+contributingFactors = as.character(contributingFactors)
+contributingFactors = contributingFactors[contributingFactors != "Unspecified" & contributingFactors != ""]
+contributingFactors = as.factor(contributingFactors)
+
+mostCommonCauses = plyr::count(contributingFactors) # Get frequency counts
+mostCommonCauses=mostCommonCauses[order(-mostCommonCauses$freq),]
+
+# Create dataframe with top ten causes and frequencies
+contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCauses$x[1:10]), "frequency"=
+                                             mostCommonCauses$freq[1:10]) #keep top 10 only
+
+contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, 
+                                             levels = contributingFactorsDataframe$causes)
+
+ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
+  geom_bar(stat = "identity")+ggtitle("Most common causes of collisions in NYC")+
+  theme(axis.text.x = element_text(angle=45, hjust = 1, size=8), legend.position="None")+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))
+```
+
+
+# Most common causes of collisions per borough
+
+```{r}
+#par(mfrow=c(3,3))
+for(borough in levels(collisions$BOROUGH)){
+  collisionsInBorough = collisions[collisions$BOROUGH==borough, ] # Collision in current borough
+  # Concatenate every causes together
+  contributingFactors = unlist(list(collisionsInBorough$CONTRIBUTING.FACTOR.VEHICLE.1, 
+                                    collisionsInBorough$CONTRIBUTING.FACTOR.VEHICLE.2, 
+                                    collisionsInBorough$CONTRIBUTING.FACTOR.VEHICLE.3,
+                                    collisionsInBorough$CONTRIBUTING.FACTOR.VEHICLE.4, 
+                                    collisionsInBorough$CONTRIBUTING.FACTOR.VEHICLE.5))
+  
+  # Remove unknown causes
+  contributingFactors = as.character(contributingFactors)
+  contributingFactors = contributingFactors[contributingFactors != "Unspecified" & contributingFactors != ""]
+  contributingFactors = as.factor(contributingFactors)
+  contributingFactors
+  
+  mostCommonCauses = plyr::count(contributingFactors) # Get frequency counts
+  mostCommonCauses=mostCommonCauses[order(-mostCommonCauses$freq),]
+  
+  # Create dataframe with top ten causes and frequencies
+  contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCauses$x[1:10]), "frequency"=
+                                               mostCommonCauses$freq[1:10]) #keep top 10 only
+  
+  contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, levels =
+                                                 contributingFactorsDataframe$causes)
+  plotTitle = paste("Most common causes of collisions in", borough)
+  print(ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
+          geom_bar(stat = "identity")+
+          ggtitle(plotTitle)+
+          theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1)))
+}
+```
+
+
+# Most common causes of mortal collisions
+
+Note: this does not contain the accidents whose cause remained unknown.
+```{r}
+mortalCollisions = collisions[collisions$NUMBER.OF.PERSONS.KILLED > 0, ]
+
+# Concatenate every causes together
+contributingFactors = unlist(list(mortalCollisions$CONTRIBUTING.FACTOR.VEHICLE.1,
+                                  mortalCollisions$CONTRIBUTING.FACTOR.VEHICLE.2, 
+                                  mortalCollisions$CONTRIBUTING.FACTOR.VEHICLE.3, 
+                                  mortalCollisions$CONTRIBUTING.FACTOR.VEHICLE.4, 
+                                  mortalCollisions$CONTRIBUTING.FACTOR.VEHICLE.5))
+
+# Remove unknown causes
+contributingFactors = as.character(contributingFactors)
+contributingFactors = contributingFactors[contributingFactors != "Unspecified" & contributingFactors != ""]
+contributingFactors = as.factor(contributingFactors)
+
+mostCommonCauses = plyr::count(contributingFactors) # Get frequency counts
+mostCommonCauses=mostCommonCauses[order(-mostCommonCauses$freq),]
+
+# Create dataframe with top ten causes and frequencies
+contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCauses$x[1:10]), "frequency"=
+                                             mostCommonCauses$freq[1:10]) #keep top 10 only
+
+contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, levels = contributingFactorsDataframe$causes)
+ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes))+
+  geom_bar(stat = "identity")+
+  ggtitle("Most common causes of mortal collisions in NYC")+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text( hjust = 1, size=8),
+        legend.position='none')+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  ylab("Fatal collisions")
+```
+
+# Amount of death per cause
+
+```{r}
+deaths = aggregate(collisions$NUMBER.OF.PERSONS.KILLED,
+                   by=list(Category=collisions$CONTRIBUTING.FACTOR.VEHICLE.1), FUN=sum)
+
+deaths = deaths[order(-deaths$x),]
+
+deaths$Category = factor(deaths$Category, levels = deaths$Category)
+
+ggplot(data=deaths[1:10,], aes(x=Category, y=x, fill=Category)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Death per collision's cause")+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(hjust = 1, size=8), legend.position='none')+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  ylab("Deaths")
+```
+
+
+# Most common vehicle types involved in collisions in NYC
+
+```{r}
+# Concatenate every causes together
+vehicleTypes = unlist(list(collisions$VEHICLE.TYPE.CODE.1,
+                                  collisions$VEHICLE.TYPE.CODE.2, 
+                                  collisions$VEHICLE.TYPE.CODE.3, 
+                                  collisions$VEHICLE.TYPE.CODE.4, 
+                                  collisions$VEHICLE.TYPE.CODE.5))
+
+# Remove unknown causes
+vehicleTypes = as.character(vehicleTypes)
+vehicleTypes = vehicleTypes[vehicleTypes != "UNKNOWN" & vehicleTypes != ""]
+vehicleTypes = as.factor(vehicleTypes)
+
+mostCommonCauses = plyr::count(vehicleTypes) # Get frequency counts
+mostCommonCauses=mostCommonCauses[order(-mostCommonCauses$freq),]
+
+# Create dataframe with top ten causes and frequencies
+vehicleTypesDataframe <- data.frame("causes"=as.character(mostCommonCauses$x[1:10]), "frequency"=
+                                             mostCommonCauses$freq[1:10]) #keep top 10 only
+
+vehicleTypesDataframe$causes = factor(vehicleTypesDataframe$causes, levels = vehicleTypesDataframe$causes)
+ggplot(data=vehicleTypesDataframe, aes(x=causes, y=frequency)) + geom_bar(stat = "identity")+ggtitle("Most common vehicle type involved in collisions in NYC")+ coord_flip()+ theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
