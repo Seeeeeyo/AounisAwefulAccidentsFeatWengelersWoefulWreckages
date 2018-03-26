@@ -56,6 +56,10 @@ daily_sums$WEEKDAY <- factor(daily_sums$WEEKDAY, levels(daily_sums$WEEKDAY)[matc
 ```
 
 ```{r}
+ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"), y = NUMBER_OF_MOTORIST_INJURED)) + geom_line()
+```
+
+```{r}
 cyclist_injured_ts <- ts(daily_sums$NUMBER_OF_CYCLIST_INJURED, frequency = 360)
 # cyclist_injured_ts <- msts(daily_sums$NUMBER_OF_CYCLIST_INJURED, frequency = 365)
 # cyclist_injured_xts <- xts(daily_sums$NUMBER_OF_CYCLIST_INJURED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"), frequency = 1)
@@ -131,7 +135,7 @@ autoplot.zoo(percentage_fatalities) + labs(x = "Time", y = "Percentage fatalitie
 
 ```{r}
 daily_sums$QUARTER_YEAR <- as.yearqtr(daily_sums$DATE, format = "%m/%d/%Y")
-quarterly_sums <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_INJURED, NUMBER_OF_CYCLIST_INJURED, NUMBER_OF_MOTORIST_INJURED, NUMBER_OF_PEDESTRIANS_KILLED, NUMBER_OF_CYCLIST_KILLED, NUMBER_OF_MOTORIST_KILLED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
+quarterly_sums <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_INJURED, NUMBER_OF_CYCLIST_INJURED, NUMBER_OF_MOTORIST_INJURED, NUMBER_OF_PEDESTRIANS_KILLED, NUMBER_OF_CYCLIST_KILLED, NUMBER_OF_MOTORIST_KILLED, NUMBER_OF_PERSONS_INJURED, NUMBER_OF_PERSONS_KILLED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
 quarterly_sums_injured <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_INJURED, NUMBER_OF_CYCLIST_INJURED, NUMBER_OF_MOTORIST_INJURED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
 quarterly_sums_killed <- aggregate(cbind(NUMBER_OF_PEDESTRIANS_KILLED, NUMBER_OF_CYCLIST_KILLED, NUMBER_OF_MOTORIST_KILLED) ~ QUARTER_YEAR, data = daily_sums, FUN = sum)
 ```
@@ -154,6 +158,10 @@ ggplot(quarterly_sums, aes(x = as.Date(QUARTER_YEAR, format = "%m/%d/%Y"))) +
   geom_smooth(aes(y = PERCENTAGE_CYCLISTS_KILLED, colour = "PERCENTAGE_CYCLISTS_KILLED")) +
   geom_smooth(aes(y = PERCENTAGE_MOTORIST_SKILLED, colour = "PERCENTAGE_MOTORIST_SKILLED"))
 # autoplot.zoo(percentage_fatalities) + labs(x = "Time", y = "Percentage fatalities")
+```
+
+```{r}
+ggplot(quarterly_sums, aes(x = QUARTER_YEAR, y = NUMBER_OF_PERSONS_KILLED)) + geom_line()
 ```
 
 # Analysis by weekday
