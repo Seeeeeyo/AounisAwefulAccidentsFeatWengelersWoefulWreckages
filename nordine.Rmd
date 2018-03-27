@@ -39,6 +39,7 @@ collisions <- read.csv(file = "NYPD_Motor_Vehicle_Collisions.csv", header =TRUE,
 collisions$DATE = as.Date(collisions$DATE, format="%m/%d/%Y")
 ```
 
+
 # Amount of fatal collisions
 ```{r}
 nrow(collisions[collisions$NUMBER.OF.PERSONS.KILLED>0,])
@@ -198,6 +199,7 @@ ggplot(data=boroughsDataframe, aes(boroughs, fill=boroughs)) +
 ```
 
 
+
 # Most common causes of collisions
 
 ```{r}
@@ -214,8 +216,22 @@ contributingFactors = as.character(contributingFactors)
 contributingFactors = contributingFactors[contributingFactors != "Unspecified" & contributingFactors != ""]
 contributingFactors = as.factor(contributingFactors)
 
+
+################
+  #Create a custom color scale for the contributing factors only
+  library(RColorBrewer)
+  colourCount <- length(levels(contributingFactors))
+  getPalette = colorRampPalette(brewer.pal(9, "Reds")) #choose other set to get another color scheme
+  myColors = getPalette(colourCount)
+ 
+  #names(myColors) <- levels(contributingFactors)
+  colScale <-  scale_fill_manual(name = "grp", values = myColors)
+################
+  
 mostCommonCauses = plyr::count(contributingFactors) # Get frequency counts
+names(myColors) <- mostCommonCauses$x[order(mostCommonCauses$freq)] # Assign the red color in descending color
 mostCommonCauses=mostCommonCauses[order(-mostCommonCauses$freq),]
+
 
 # Create dataframe with top ten causes and frequencies
 contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCauses$x[1:10]), "frequency"=
@@ -227,7 +243,8 @@ contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes
 ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
   geom_bar(stat = "identity")+ggtitle("Most common known causes of collisions in NYC")+
   theme(axis.text.x = element_text(angle=45, hjust = 1, size=8), legend.position="None")+
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))
+  scale_fill_manual(values = myColors)
+
 ```
 
 
@@ -300,7 +317,8 @@ ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text( hjust = 1, size=8),
         legend.position='none')+
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
-  ylab("Fatal collisions")
+  ylab("Fatal collisions")+
+  scale_fill_manual(values = myColors)
 ```
 
 # Amount of death per cause
