@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 ---
 title: "NYPD Motor Vehicle Collisions Analysis"
 output:
@@ -19,6 +20,9 @@ library(zoo)
 library(dplyr)
 library(plyr)
 library(stringr)
+
+# Google Maps Style
+actual_style <- "https://maps.googleapis.com/maps/api/staticmap?key=AIzaSyBmeGRbELjcBo0FUmB5LTK0ZUcBNKrcdwQ&center=40.710214438068604,-73.9838008730469&zoom=12&format=png&maptype=roadmap&style=saturation:-100%7Cgamma:0.5&style=feature:administrative%7Celement:geometry%7Cvisibility:off&style=feature:administrative.land_parcel%7Cvisibility:off&style=feature:administrative.neighborhood%7Cvisibility:off&style=feature:poi%7Cvisibility:off&style=feature:poi%7Celement:labels.text%7Cvisibility:off&style=feature:road%7Celement:labels%7Cvisibility:off&style=feature:road%7Celement:labels.icon%7Cvisibility:off&style=feature:road.arterial%7Celement:labels%7Cvisibility:off&style=feature:road.highway%7Celement:labels%7Cvisibility:off&style=feature:road.local%7Cvisibility:off&style=feature:transit%7Cvisibility:off&style=feature:water%7Celement:labels.text%7Cvisibility:off&size=480x360"
 
 # Specify columnn type to soeed up loading
 columnTypes = c("DATE"="character", "TIME"="factor", "ZIP.CODE"="integer", "LATITUDE"="double", "LONGITUDE"="double",
@@ -55,7 +59,7 @@ collisionsComplete = collisions[complete.cases(collisions$LONGITUDE) & complete.
 
 # Get a map
 #map = get_map(location = "New York city", source="osm", maptype="roadmap", zoom = "auto", color = "color")
-map = get_googlemap(center="New York city", maptype="terrain", zoom=10, color="color", size = c(640, 420))
+map = get_googlemap(center="New York City", maptype="terrain", zoom=10, color="color", size = c(640, 420), style = actual_style)
 
 #ggmap(map, extent = "device") +
  #   geom_point(data=collisionsComplete, aes(x = LONGITUDE, y = LATITUDE),
@@ -68,7 +72,7 @@ map = get_googlemap(center="New York city", maptype="terrain", zoom=10, color="c
 ```{r}
 # Draw heat map
 ggmap(map, extent = "device") +
-  geom_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE), size = 0.3) +stat_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") +scale_fill_gradient(low = "green", high = "red") + scale_alpha(range = c(0, 0.3), guide = FALSE)
+  geom_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE), size = 0.3) +stat_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") +scale_fill_gradient(low = "#ffd1d1", high = "#980000") + scale_alpha(range = c(0.2, 0.5), guide = FALSE)
 ```
 
 
@@ -92,7 +96,7 @@ ggmap(map, extent = "device") +
 
 # Retain mortal collisions in Manahattan only
 
-animatedMap <- ggmap(map) +
+animatedMap <- ggmap(map, extent = "device") +
   geom_point(data = collisions[as.Date("2012-06-01") <collisions$DATE & 
                                        collisions$DATE<as.Date("2012-08-01"), ],
              aes(x = LONGITUDE, y =LATITUDE, frame=DATE, cumulative=TRUE),
@@ -101,6 +105,10 @@ animatedMap <- ggmap(map) +
 
 animation::ani.options(interval=0.5)
 gganimate(animatedMap,ani.width = 750, ani.height = 750)
+```
+
+```{r}
+gganimate(animatedMap, filename = "accidents.gif", ani.width = 640, ani.height = 420)
 ```
 
 
@@ -365,6 +373,4 @@ vehicleTypesDataframe <- data.frame("causes"=as.character(mostCommonCauses$x[1:1
 vehicleTypesDataframe$causes = factor(vehicleTypesDataframe$causes, levels = vehicleTypesDataframe$causes)
 ggplot(data=vehicleTypesDataframe, aes(x=causes, y=frequency)) + geom_bar(stat = "identity")+ggtitle("Most common vehicle type involved in collisions in NYC")+ coord_flip()+ theme(plot.title = element_text(hjust = 0.5))
 ```
-
-
 

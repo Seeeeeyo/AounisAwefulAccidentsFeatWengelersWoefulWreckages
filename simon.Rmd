@@ -62,7 +62,7 @@ ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"), y = NUMBER_OF_MOT
 ```{r}
 cyclist_injured_ts <- ts(daily_sums$NUMBER_OF_CYCLIST_INJURED, frequency = 360)
 # cyclist_injured_ts <- msts(daily_sums$NUMBER_OF_CYCLIST_INJURED, frequency = 365)
-# cyclist_injured_xts <- xts(daily_sums$NUMBER_OF_CYCLIST_INJURED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"), frequency = 1)
+cyclist_injured_xts <- xts(daily_sums$NUMBER_OF_CYCLIST_INJURED, order.by = as.Date(daily_sums$DATE, format = "%m/%d/%Y"), frequency = 1)
 ```
 
 ```{r}
@@ -240,7 +240,7 @@ ggplot(tmp_df[1:15,], aes(x = TYPE, y = FREQ, fill = TYPE)) + geom_bar(stat = "i
 ```
 
 ```{r}
-testy <- collisions %>% mutate(YEAR = format(as.Date(DATE, format = "%m/%d/%Y"), "%Y")) %>% group_by(YEAR, VEHICLE_TYPE_CODE_1) %>% summarise(COUNT = n())
+testy <- collisions %>% dplyr::mutate(YEAR = format(as.Date(DATE, format = "%m/%d/%Y"), "%Y")) %>% dplyr::group_by(YEAR, VEHICLE_TYPE_CODE_1) %>% dplyr::summarise(COUNT = n())
 testy <- as.data.frame(testy)
 ```
 
@@ -253,12 +253,12 @@ maybe use dplyr to summarise more easily
 # Location related (large scale)
 
 ```{r}
-test <- collisions %>% mutate(YEAR = format(as.Date(DATE, format = "%m/%d/%Y"), "%Y")) %>% group_by(YEAR, BOROUGH) %>% summarise(INJURED = sum(NUMBER_OF_PERSONS_INJURED), KILLED = sum(NUMBER_OF_PERSONS_KILLED), COUNT = n())
+test <- collisions %>% dplyr::mutate(YEAR = format(as.Date(DATE, format = "%m/%d/%Y"), "%Y")) %>% dplyr::group_by(YEAR, BOROUGH) %>% dplyr::summarise(INJURED = sum(NUMBER_OF_PERSONS_INJURED), KILLED = sum(NUMBER_OF_PERSONS_KILLED), COUNT = n())
 test <- as.data.frame(test)
 ```
 
 ```{r}
-ggplot(test, aes(x = YEAR, y = INJURED, colour = BOROUGH, fill = BOROUGH)) + geom_bar(stat = "identity", position = "stack")
+p <- ggplot(test, aes(x = BOROUGH, y = INJURED, colour = BOROUGH, fill = BOROUGH, frame = YEAR)) + geom_bar(stat = "identity")
 ```
 
 ```{r}
