@@ -4,11 +4,11 @@ In June 2012, New York City's officials committed to publish online all records 
 
 First of all, we looked at the spatial component of these collisions. With in mind the goal to point out locations subject to many accidents and provide insight into the problem. We, for instance, compared road safety in different neighborhoods.
 
-![heatmap](https://github.com/swengeler/AounisAwefulAccidentsFeatWengelersWoefulWreckages/images/.jpeg)
+![heatmap](https://raw.github.com/swengeler/AounisAwefulAccidentsFeatWengelersWoefulWreckages/heatmap.jpeg)
 
 Then, we focused on the temporal nature of these events. Our objective was to identify and highlight trends in the underlying data.
 
 + The cyclist/pedestrian/motorist time series (even more catchiness)
-![time series](https://github.com/swengeler/AounisAwefulAccidentsFeatWengelersWoefulWreckages/images/time_series.jpeg)
+![time series](https://raw.github.com/swengeler/AounisAwefulAccidentsFeatWengelersWoefulWreckages/time_series.jpeg)
 
 Finally, we also studied the causes of these accidents. Our findings and observations are all summarized in this [video](https://youtubevideourl)
