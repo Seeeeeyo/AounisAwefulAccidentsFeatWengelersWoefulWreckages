@@ -72,7 +72,7 @@ map = get_googlemap(center="New York City", maptype="terrain", zoom=10, color="c
 ```{r}
 # Draw heat map
 ggmap(map, extent = "device") +
-  geom_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE), size = 0.3) +stat_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") +scale_fill_gradient(low = "#ffd1d1", high = "#980000") + scale_alpha(range = c(0.2, 0.5), guide = FALSE)
+  geom_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE), size = 0.3) +stat_density2d(data = collisionsComplete, aes(x = LONGITUDE, y = LATITUDE, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = "polygon") +scale_fill_gradient(low = "#ff6c6c", high = "#930000") + scale_alpha(range = c(0.2, 0.5), guide = FALSE)
 ```
 
 
@@ -95,6 +95,7 @@ ggmap(map, extent = "device") +
 ```{r}
 
 # Retain mortal collisions in Manahattan only
+
 
 animatedMap <- ggmap(map, extent = "device") +
   geom_point(data = collisions[as.Date("2012-06-01") <collisions$DATE & 
@@ -207,7 +208,6 @@ ggplot(data=boroughsDataframe, aes(boroughs, fill=boroughs)) +
 ```
 
 
-
 # Most common causes of collisions
 
 ```{r}
@@ -229,8 +229,10 @@ contributingFactors = as.factor(contributingFactors)
   #Create a custom color scale for the contributing factors only
   library(RColorBrewer)
   colourCount <- length(levels(contributingFactors))
-  getPalette = colorRampPalette(brewer.pal(9, "Reds")) #choose other set to get another color scheme
-  myColors = getPalette(colourCount)
+  getPalette = colorRampPalette(brewer.pal(9, "Blues")) #choose other set to get another color scheme
+  #myColors = getPalette(colourCount)
+  myColors = getPalette(30)
+  myColors = unlist(list(rep_len("#000000", (colourCount - 30)), myColors))
  
   #names(myColors) <- levels(contributingFactors)
   colScale <-  scale_fill_manual(name = "grp", values = myColors)
@@ -248,11 +250,12 @@ contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCause
 contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, 
                                              levels = contributingFactorsDataframe$causes)
 
-ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
+p <- ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes)) +
   geom_bar(stat = "identity")+ggtitle("Most common known causes of collisions in NYC")+
-  theme(axis.text.x = element_text(angle=45, hjust = 1, size=8), legend.position="None")+
-  scale_fill_manual(values = myColors)
-
+  theme(axis.text.x = element_text(angle=45, hjust = 1, size=12), legend.position="None")+
+  scale_fill_manual(values = myColors)+
+  ylab("Number of collisions")+xlab(NULL)
+p
 ```
 
 
@@ -319,14 +322,16 @@ contributingFactorsDataframe <- data.frame("causes"=as.character(mostCommonCause
                                              mostCommonCauses$freq[1:10]) #keep top 10 only
 
 contributingFactorsDataframe$causes = factor(contributingFactorsDataframe$causes, levels = contributingFactorsDataframe$causes)
-ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes))+
+p <- ggplot(data=contributingFactorsDataframe, aes(x=causes, y=frequency, fill=causes))+
   geom_bar(stat = "identity")+
-  ggtitle("Most common known causes of mortal collisions in NYC")+
-  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text( hjust = 1, size=8),
+  ggtitle("Most common known causes of fatal collisions in NYC")+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, size=12),
         legend.position='none')+
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 30))+
   ylab("Fatal collisions")+
+  xlab(NULL)+
   scale_fill_manual(values = myColors)
+p
 ```
 
 # Amount of death per cause

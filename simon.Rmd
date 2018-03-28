@@ -56,7 +56,22 @@ daily_sums$WEEKDAY <- factor(daily_sums$WEEKDAY, levels(daily_sums$WEEKDAY)[matc
 ```
 
 ```{r}
-ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"), y = NUMBER_OF_MOTORIST_INJURED)) + geom_line()
+ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"), y = (NUMBER_OF_CYCLIST_INJURED + NUMBER_OF_CYCLIST_KILLED))) + geom_line(size = 0.25) + xlab("Time in days") + ylab("Cyclists in accidents") + ggtitle("Daily number of injured or killed cyclists in NYC")
+```
+```{r}
+ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"), y = (NUMBER_OF_MOTORIST_INJURED + NUMBER_OF_MOTORIST_KILLED))) + geom_line(size = 0.25) + xlab("Time in days") + ylab("Motorists in accidents") + ggtitle("Daily number of injured or killed motorists in NYC")
+```
+```{r}
+ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"), y = (NUMBER_OF_PEDESTRIANS_INJURED + NUMBER_OF_PEDESTRIANS_KILLED))) + geom_line(size = 0.25) + xlab("Time in days") + ylab("Pedestrians in accidents") + ggtitle("Daily number of injured or killed pedestrians in NYC")
+```
+
+```{r}
+ggplot(daily_sums, aes(x = as.Date(DATE, format = "%m/%d/%Y"))) + 
+  geom_line(aes(y = (NUMBER_OF_CYCLIST_INJURED + NUMBER_OF_CYCLIST_KILLED), colour = "Cyclists"), size = 0.25) +
+  geom_line(aes(y = (NUMBER_OF_MOTORIST_INJURED + NUMBER_OF_MOTORIST_KILLED), colour = "Motorists"), size = 0.25) +
+  geom_line(aes(y = (NUMBER_OF_PEDESTRIANS_INJURED + NUMBER_OF_PEDESTRIANS_KILLED), colour = "Pedestrians"), size = 0.25) +
+  xlab("Time in days") + ylab("People in accidents") + ggtitle("Daily number of injured or killed persons in NYC") +
+  guides(colour = guide_legend(title = "Traffic participants"))
 ```
 
 ```{r}
@@ -188,7 +203,7 @@ ggplot(collisions, aes(x = TIME, fill = WEEKDAY)) + geom_histogram(alpha = 0.2, 
 ```
 
 ```{r}
-collisions$TIME <- as.POSIXct(strptime(collisions$TIME, format="%H:%M:%S"))
+ggplot(collisions, aes(x = TIME, fill = WEEKDAY)) + geom_density() + facet_wrap( ~ WEEKDAY, scales = "free") + xlab("Time of the day") + ylab("Density of accidents")
 ```
 
 ```{r, fig.height=20, fig.width=8}
@@ -275,13 +290,14 @@ ggplot(test, aes(x = YEAR, y = COUNT, colour = BOROUGH, fill = BOROUGH)) + geom_
 ```{r}
 daily_sums$YEAR <- year(as.Date(daily_sums$DATE, format = "%m/%d/%Y"))
 yearly_sums <- aggregate(cbind(NUMBER_OF_PERSONS_INJURED, NUMBER_OF_PERSONS_KILLED) ~ YEAR, data = daily_sums, FUN = sum)
+yearly_sums <- daily_sums %>% group_by(YEAR) %>% dplyr::summarise(NUMBER_OF_PERSONS_INJURED = sum(NUMBER_OF_PERSONS_INJURED), NUMBER_OF_PERSONS_KILLED = sum(NUMBER_OF_PERSONS_KILLED), NUMBER_OF_ACCIDENTS = n())
 yearly_sums$PERCENTAGE_OF_PERSONS_KILLED <- with(yearly_sums, NUMBER_OF_PERSONS_KILLED / (NUMBER_OF_PERSONS_KILLED + NUMBER_OF_PERSONS_INJURED))
 ggplot(yearly_sums, aes(x = YEAR, y = NUMBER_OF_PERSONS_KILLED)) + geom_line()
 ```
 
 ```{r, fig.height=8}
-p1 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = NUMBER_OF_PERSONS_KILLED, colour = "NUMBER_OF_PERSONS_KILLED"), size = 1) + scale_color_manual(values = "#E69F00")
-p2 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = NUMBER_OF_PERSONS_INJURED, colour = "NUMBER_OF_PERSONS_INJURED"), size = 1)
-p3 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = PERCENTAGE_OF_PERSONS_KILLED, colour = "PERCENTAGE_OF_PERSONS_KILLED"), size = 1)
+p1 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = NUMBER_OF_PERSONS_KILLED, colour = "NUMBER_OF_PERSONS_KILLED"), size = 2) + scale_color_manual(values = "#f44141") + xlab(NULL) + ylab(NULL) + theme(legend.position = "none") + ggtitle("Persons killed")
+p2 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = NUMBER_OF_PERSONS_INJURED, colour = "NUMBER_OF_PERSONS_INJURED"), size = 2)  + scale_color_manual(values = "#14872d") + xlab(NULL) + ylab(NULL) + theme(legend.position = "none") + ggtitle("Persons injured")
+p3 <- ggplot(yearly_sums, aes(x = YEAR)) + geom_line(aes(y = PERCENTAGE_OF_PERSONS_KILLED, colour = "PERCENTAGE_OF_PERSONS_KILLED"), size = 2)  + scale_color_manual(values = "#243ea5") + xlab("Time in years") + ylab(NULL) + theme(legend.position = "none") + ggtitle("% persons killed")
 grid.arrange(p1, p2, p3, ncol = 1)
 ```
