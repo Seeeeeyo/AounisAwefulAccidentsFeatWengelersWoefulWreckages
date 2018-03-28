@@ -1,3 +1,5 @@
+Authors: Nordine Aouni, Simon Wengeler
+
 # Motor vehicle collisions in New York City
 
 In June 2012, New York City's officials committed to publish online all records of future vehicle collisions occurring on the city’s roads. Their goal was to allow the public to learn more about road safety in the city which happens to be the purpose of our analysis. Between the publication of this data set and the day we started our investigation, more than 1.3 million collisions occurred. Therefore, in order to make sense of this tremendous amount of information we decided on two main approaches.
@@ -12,4 +14,4 @@ Then, we focused on the temporal nature of these events. Our objective was to id
 ### Deaths, injuries and death percentage over time
 ![time_series](https://github.com/swengeler/AounisAwefulAccidentsFeatWengelersWoefulWreckages/blob/master/images/time_series.jpeg)
 
-Finally, we also studied the immediate causes of these accidents in order to provide more insight into road safety in the streets of New York City. Our findings and observations are all summarized in this [video](https://youtubevideourl)
+Finally, we also studied the immediate causes of these accidents in order to provide more insight into road safety in the streets of New York City. Our findings and observations are all summarized in this [video](https://www.youtube.com/watch?v=XKY3nBiIuN0).
